@@ -26,9 +26,37 @@ DW1000Class DW1000;
  * #### Static member variables ##############################################
  * ######################################################################### */
 // pins
-uint8_t DW1000Class::_ss;
-uint8_t DW1000Class::_rst;
-uint8_t DW1000Class::_irq;
+GPIO_Handle DW1000Class::_ss = {
+	.instance = PC,
+	.pinMask = BIT0,
+	.pin = 0,
+	.mode = GPIO_MODE_OUTPUT,
+	.pushPull = GPIO_PUSEL_PULL_UP,
+	.debouncingTime = 0,
+	.interruptMode = 0,
+};
+GPIO_Handle DW1000Class::_rst = {
+	.instance = PC,
+	.pinMask = BIT14,
+	.pin = 14,
+	.mode = GPIO_MODE_OUTPUT,
+	.pushPull = GPIO_PUSEL_PULL_UP,
+	.debouncingTime = 0,
+	.interruptMode = 0,
+};
+GPIO_Handle DW1000Class::_irq = {
+	.instance = PC,
+	.pinMask = BIT5,
+	.pin = 5,
+	.mode = GPIO_MODE_INPUT,
+	.pushPull = GPIO_PUSEL_PULL_UP,
+	.debouncingTime = 0,
+	.interruptMode = GPIO_INT_RISING,
+	.callback = DW1000Class::handleInterrupt
+};
+
+uint8_t DW1000Class::spiTxBuf[SPI_TX_MAX_LEN];
+uint8_t DW1000Class::spiRxBuf[SPI_RX_MAX_LEN];
 
 
 // IRQ callbacks
@@ -98,22 +126,13 @@ const byte DW1000Class::BIAS_500_64[] = {110, 105, 100, 93, 82, 69, 51, 27, 0, 2
 const byte DW1000Class::BIAS_900_16[] = {137, 122, 105, 88, 69, 47, 25, 0, 21, 48, 79, 105, 127, 147, 160, 169, 178, 197};
 const byte DW1000Class::BIAS_900_64[] = {147, 133, 117, 99, 75, 50, 29, 0, 24, 45, 63, 76, 87, 98, 116, 122, 132, 142};
 */
-// SPI settings
-#ifdef ESP8266
-	// default ESP8266 frequency is 80 Mhz, thus divide by 4 is 20 MHz
-	const SPISettings DW1000Class::_fastSPI = SPISettings(20000000L, MSBFIRST, SPI_MODE0);
-#else
-	const SPISettings DW1000Class::_fastSPI = SPISettings(16000000L, MSBFIRST, SPI_MODE0);
-#endif
-const SPISettings DW1000Class::_slowSPI = SPISettings(2000000L, MSBFIRST, SPI_MODE0);
-const SPISettings* DW1000Class::_currentSPI = &_fastSPI;
 
 /* ###########################################################################
  * #### Init and end #######################################################
  * ######################################################################### */
 
 void DW1000Class::end() {
-	SPI.end();
+	
 }
 
 void DW1000Class::select(uint8_t ss) {
@@ -122,11 +141,6 @@ void DW1000Class::select(uint8_t ss) {
 	// but just to be sure)
 	enableClock(AUTO_CLOCK);
 	delay(5);
-	// reset chip (either soft or hard)
-	if(_rst != 0xff) {
-		// dw1000 data sheet v2.08 §5.6.1 page 20, the RSTn pin should not be driven high but left floating.
-		pinMode(_rst, INPUT);
-	}
 	reset();
 	// default network and node id
 	writeValueToBytes(_networkAndAddress, 0xFF, LEN_PANADR);
@@ -157,29 +171,23 @@ void DW1000Class::select(uint8_t ss) {
 }
 
 void DW1000Class::reselect(uint8_t ss) {
-	_ss = ss;
-	pinMode(_ss, OUTPUT);
-	digitalWrite(_ss, HIGH);
+	(void)ss;
+	GPIO_write(&_ss, HIGH);
 }
 
 void DW1000Class::begin(uint8_t irq, uint8_t rst) {
+	(void)irq;
+	(void)rst;
+	GPIO_initIo(&_ss);
+	GPIO_initIo(&_irq);
+	GPIO_initIo(&_rst);
 	// generous initial init/wake-up-idle delay
 	delay(5);
-	// Configure the IRQ pin as INPUT. Required for correct interrupt setting for ESP8266
-    	pinMode(irq, INPUT);
-	// start SPI
-	SPI.begin();
-#ifndef ESP8266
-	SPI.usingInterrupt(digitalPinToInterrupt(irq)); // not every board support this, e.g. ESP8266
-#endif
 	// pin and basic member setup
-	_rst        = rst;
-	_irq        = irq;
 	_deviceMode = IDLE_MODE;
 	// attach interrupt
 	//attachInterrupt(_irq, DW1000Class::handleInterrupt, CHANGE); // todo interrupt for ESP8266
 	// TODO throw error if pin is not a interrupt pin
-	attachInterrupt(digitalPinToInterrupt(_irq), DW1000Class::handleInterrupt, RISING); // todo interrupt for ESP8266
 }
 
 void DW1000Class::manageLDE() {
@@ -214,15 +222,12 @@ void DW1000Class::enableClock(byte clock) {
 	memset(pmscctrl0, 0, LEN_PMSC_CTRL0);
 	readBytes(PMSC, PMSC_CTRL0_SUB, pmscctrl0, LEN_PMSC_CTRL0);
 	if(clock == AUTO_CLOCK) {
-		_currentSPI = &_fastSPI;
 		pmscctrl0[0] = AUTO_CLOCK;
 		pmscctrl0[1] &= 0xFE;
 	} else if(clock == XTI_CLOCK) {
-		_currentSPI = &_slowSPI;
 		pmscctrl0[0] &= 0xFC;
 		pmscctrl0[0] |= XTI_CLOCK;
 	} else if(clock == PLL_CLOCK) {
-		_currentSPI = &_fastSPI;
 		pmscctrl0[0] &= 0xFC;
 		pmscctrl0[0] |= PLL_CLOCK;
 	} else {
@@ -292,9 +297,9 @@ void DW1000Class::deepSleep() {
 }
 
 void DW1000Class::spiWakeup(){
-        digitalWrite(_ss, LOW);
+        GPIO_write(&_ss, LOW);
         delay(2);
-        digitalWrite(_ss, HIGH);
+        GPIO_write(&_ss, HIGH);
         if (_debounceClockEnabled){
                 DW1000Class::enableDebounceClock();
         }
@@ -302,18 +307,17 @@ void DW1000Class::spiWakeup(){
 
 
 void DW1000Class::reset() {
-	if(_rst == 0xff) {
-		softReset();
-	} else {
-		// dw1000 data sheet v2.08 §5.6.1 page 20, the RSTn pin should not be driven high but left floating.
-		pinMode(_rst, OUTPUT);
-		digitalWrite(_rst, LOW);
-		delay(2);  // dw1000 data sheet v2.08 §5.6.1 page 20: nominal 50ns, to be safe take more time
-		pinMode(_rst, INPUT);
-		delay(10); // dwm1000 data sheet v1.2 page 5: nominal 3 ms, to be safe take more time
-		// force into idle mode (although it should be already after reset)
-		idle();
-	}
+#ifdef DW1000_HW_RESET
+	// dw1000 data sheet v2.08 §5.6.1 page 20, the RSTn pin should not be driven high but left floating.
+	GPIO_write(&_rst, LOW);
+	delay(2);  // dw1000 data sheet v2.08 §5.6.1 page 20: nominal 50ns, to be safe take more time
+	GPIO_write(&_rst, HIGH);
+	delay(10); // dwm1000 data sheet v1.2 page 5: nominal 3 ms, to be safe take more time
+	// force into idle mode (although it should be already after reset)
+	idle();
+#else
+	softReset();
+#endif
 }
 
 void DW1000Class::softReset() {
@@ -1307,10 +1311,11 @@ void DW1000Class::setData(byte data[], uint16_t n) {
 	_txfctrl[1] |= (byte)((n >> 8) & 0x03);  // 2 added bits if extended length
 }
 
-void DW1000Class::setData(const String& data) {
+void DW1000Class::setData(const std::string& data) {
 	uint16_t n = data.length()+1;
 	byte* dataBytes = (byte*)malloc(n);
-	data.getBytes(dataBytes, n);
+	// data.getBytes(dataBytes, n);
+	data.copy((char*)dataBytes, n, 0);
 	setData(dataBytes, n);
 	free(dataBytes);
 }
@@ -1340,7 +1345,7 @@ void DW1000Class::getData(byte data[], uint16_t n) {
 	readBytes(RX_BUFFER, NO_SUB, data, n);
 }
 
-void DW1000Class::getData(String& data) {
+void DW1000Class::getData(std::string& data) {
 	uint16_t i;
 	uint16_t n = getDataLength(); // number of bytes w/o the two FCS ones
 	if(n <= 0) { // TODO
@@ -1349,7 +1354,8 @@ void DW1000Class::getData(String& data) {
 	byte* dataBytes = (byte*)malloc(n);
 	getData(dataBytes, n);
 	// clear string
-	data.remove(0);
+	// data.remove(0);
+	data.erase(0);
 	data  = "";
 	// append to string
 	for(i = 0; i < n; i++) {
@@ -1681,17 +1687,12 @@ void DW1000Class::readBytes(byte cmd, uint16_t offset, byte data[], uint16_t n) 
 			headerLen += 2;
 		}
 	}
-	SPI.beginTransaction(*_currentSPI);
-	digitalWrite(_ss, LOW);
-	for(i = 0; i < headerLen; i++) {
-		SPI.transfer(header[i]); // send header
-	}
-	for(i = 0; i < n; i++) {
-		data[i] = SPI.transfer(JUNK); // read values
-	}
+	GPIO_write(&_ss, LOW);
+	memcpy(spiTxBuf, header, headerLen);
+	SPI_transmitAndReceive(DW_1000_SPI_ID, spiTxBuf, spiRxBuf, headerLen + n, SPI_TRANSFER_TIME_MS);
+	memcpy(data, &spiRxBuf[headerLen], n);
 	delayMicroseconds(5);
-	digitalWrite(_ss, HIGH);
-	SPI.endTransaction();
+	GPIO_write(&_ss, HIGH);
 }
 
 // always 4 bytes
@@ -1753,17 +1754,12 @@ void DW1000Class::writeBytes(byte cmd, uint16_t offset, byte data[], uint16_t da
 			headerLen += 2;
 		}
 	}
-	SPI.beginTransaction(*_currentSPI);
-	digitalWrite(_ss, LOW);
-	for(i = 0; i < headerLen; i++) {
-		SPI.transfer(header[i]); // send header
-	}
-	for(i = 0; i < data_size; i++) {
-		SPI.transfer(data[i]); // write values
-	}
+	GPIO_write(&_ss, LOW);
+	memcpy(spiTxBuf, header, headerLen);
+	memcpy(&spiTxBuf[headerLen], data, data_size);
+	SPI_transmit(DW_1000_SPI_ID, spiTxBuf, headerLen + data_size, SPI_TRANSFER_TIME_MS);
 	delayMicroseconds(5);
-	digitalWrite(_ss, HIGH);
-	SPI.endTransaction();
+	GPIO_write(&_ss, HIGH);
 }
 
 

@@ -125,30 +125,30 @@ void DW1000RangingClass::generalStart() {
 	
 	if(DEBUG) {
 		// DEBUG monitoring
-		Serial.println("DW1000-arduino");
+		DW1000_DEBUG_STR_LN("DW1000-arduino");
 		// initialize the driver
 		
 		
-		Serial.println("configuration..");
+		DW1000_DEBUG_STR_LN("configuration..");
 		// DEBUG chip info and registers pretty printed
 		char msg[90];
 		DW1000.getPrintableDeviceIdentifier(msg);
-		Serial.print("Device ID: ");
-		Serial.println(msg);
+		DW1000_DEBUG_STR("Device ID: ");
+		DW1000_DEBUG_STR_LN(msg);
 		DW1000.getPrintableExtendedUniqueIdentifier(msg);
-		Serial.print("Unique ID: ");
-		Serial.print(msg);
+		DW1000_DEBUG_STR("Unique ID: ");
+		DW1000_DEBUG_STR(msg);
 		char string[6];
 		sprintf(string, "%02X:%02X", _currentShortAddress[0], _currentShortAddress[1]);
-		Serial.print(" short: ");
-		Serial.println(string);
+		DW1000_DEBUG_STR(" short: ");
+		DW1000_DEBUG_STR_LN(string);
 		
 		DW1000.getPrintableNetworkIdAndShortAddress(msg);
-		Serial.print("Network ID & Device Address: ");
-		Serial.println(msg);
+		DW1000_DEBUG_STR("Network ID & Device Address: ");
+		DW1000_DEBUG_STR_LN(msg);
 		DW1000.getPrintableDeviceMode(msg);
-		Serial.print("Device mode: ");
-		Serial.println(msg);
+		DW1000_DEBUG_STR("Device mode: ");
+		DW1000_DEBUG_STR_LN(msg);
 	}
 	
 	
@@ -164,8 +164,8 @@ void DW1000RangingClass::startAsAnchor(char address[], const byte mode[], const 
 	DW1000.convertToByte(address, _currentAddress);
 	//write the address on the DW1000 chip
 	DW1000.setEUI(address);
-	Serial.print("device address: ");
-	Serial.println(address);
+	DW1000_DEBUG_STR("device address: ");
+	DW1000_DEBUG_STR_LN(address);
 	if (randomShortAddress) {
 		//we need to define a random short address:
 		randomSeed(analogRead(0));
@@ -188,7 +188,7 @@ void DW1000RangingClass::startAsAnchor(char address[], const byte mode[], const 
 	//defined type as anchor
 	_type = ANCHOR;
 	
-	Serial.println("### ANCHOR ###");
+	DW1000_DEBUG_STR_LN("### ANCHOR ###");
 	
 }
 
@@ -197,8 +197,8 @@ void DW1000RangingClass::startAsTag(char address[], const byte mode[], const boo
 	DW1000.convertToByte(address, _currentAddress);
 	//write the address on the DW1000 chip
 	DW1000.setEUI(address);
-	Serial.print("device address: ");
-	Serial.println(address);
+	DW1000_DEBUG_STR("device address: ");
+	DW1000_DEBUG_STR_LN(address);
 	if (randomShortAddress) {
 		//we need to define a random short address:
 		randomSeed(analogRead(0));
@@ -219,7 +219,7 @@ void DW1000RangingClass::startAsTag(char address[], const byte mode[], const boo
 	//defined type as tag
 	_type = TAG;
 	
-	Serial.println("### TAG ###");
+	DW1000_DEBUG_STR_LN("### TAG ###");
 }
 
 boolean DW1000RangingClass::addNetworkDevices(DW1000Device* device, boolean shortAddress) {
@@ -368,6 +368,7 @@ int16_t DW1000RangingClass::detectMessageType(byte datas[]) {
 		//we have a short mac frame message (poll, range, range report, etc..)
 		return datas[SHORT_MAC_LEN];
 	}
+	return 0;
 }
 
 void DW1000RangingClass::loop() {
@@ -499,12 +500,12 @@ void DW1000RangingClass::loop() {
 			if((_networkDevicesNumber == 0) || (myDistantDevice == nullptr)) {
 				//we don't have the short address of the device in memory
 				if (DEBUG) {
-					Serial.println("Not found");
+					DW1000_DEBUG_STR_LN("Not found");
 					/*
-					Serial.print("unknown: ");
+					DW1000_DEBUG_STR("unknown: ");
 					Serial.print(address[0], HEX);
 					Serial.print(":");
-					Serial.println(address[1], HEX);
+					DW1000_DEBUG_STR_LN(address[1], HEX);
 					*/
 				}
 				return;
@@ -947,21 +948,21 @@ void DW1000RangingClass::computeRangeAsymmetric(DW1000Device* myDistantDevice, D
 	
 	myTOF->setTimestamp((round1*round2-reply1*reply2)/(round1+round2+reply1+reply2));
 	/*
-	Serial.print("timePollAckReceived ");myDistantDevice->timePollAckReceived.print();
-	Serial.print("timePollSent ");myDistantDevice->timePollSent.print();
-	Serial.print("round1 "); Serial.println((long)round1.getTimestamp());
+	DW1000_DEBUG_STR("timePollAckReceived ");myDistantDevice->timePollAckReceived.print();
+	DW1000_DEBUG_STR("timePollSent ");myDistantDevice->timePollSent.print();
+	DW1000_DEBUG_STR("round1 "); DW1000_DEBUG_INT_LN((long)round1.getTimestamp());
 	
-	Serial.print("timePollAckSent ");myDistantDevice->timePollAckSent.print();
-	Serial.print("timePollReceived ");myDistantDevice->timePollReceived.print();
-	Serial.print("reply1 "); Serial.println((long)reply1.getTimestamp());
+	DW1000_DEBUG_STR("timePollAckSent ");myDistantDevice->timePollAckSent.print();
+	DW1000_DEBUG_STR("timePollReceived ");myDistantDevice->timePollReceived.print();
+	DW1000_DEBUG_STR("reply1 "); DW1000_DEBUG_INT_LN((long)reply1.getTimestamp());
 	
-	Serial.print("timeRangeReceived ");myDistantDevice->timeRangeReceived.print();
-	Serial.print("timePollAckSent ");myDistantDevice->timePollAckSent.print();
-	Serial.print("round2 "); Serial.println((long)round2.getTimestamp());
+	DW1000_DEBUG_STR("timeRangeReceived ");myDistantDevice->timeRangeReceived.print();
+	DW1000_DEBUG_STR("timePollAckSent ");myDistantDevice->timePollAckSent.print();
+	DW1000_DEBUG_STR("round2 "); DW1000_DEBUG_INT_LN((long)round2.getTimestamp());
 	
-	Serial.print("timeRangeSent ");myDistantDevice->timeRangeSent.print();
-	Serial.print("timePollAckReceived ");myDistantDevice->timePollAckReceived.print();
-	Serial.print("reply2 "); Serial.println((long)reply2.getTimestamp());
+	DW1000_DEBUG_STR("timeRangeSent ");myDistantDevice->timeRangeSent.print();
+	DW1000_DEBUG_STR("timePollAckReceived ");myDistantDevice->timePollAckReceived.print();
+	DW1000_DEBUG_STR("reply2 "); DW1000_DEBUG_INT_LN((long)reply2.getTimestamp());
 	 */
 }
 
@@ -971,7 +972,7 @@ void DW1000RangingClass::visualizeDatas(byte datas[]) {
 	char string[60];
 	sprintf(string, "%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X",
 					datas[0], datas[1], datas[2], datas[3], datas[4], datas[5], datas[6], datas[7], datas[8], datas[9], datas[10], datas[11], datas[12], datas[13], datas[14], datas[15]);
-	Serial.println(string);
+	DW1000_DEBUG_STR_LN(string);
 }
 
 

@@ -30,7 +30,7 @@
 #ifndef DW1000TIME_H
 #define DW1000TIME_H
 
-#include <Arduino.h>
+#include <port.h>
 #include <stdint.h>
 #include <inttypes.h>
 #include "DW1000CompileOptions.h"
@@ -127,7 +127,7 @@ public:
 	boolean operator==(const DW1000Time& cmp) const;
 	boolean operator!=(const DW1000Time& cmp) const;
 
-#ifdef DW1000TIME_H_PRINTABLE
+#if defined(DW1000TIME_H_PRINTABLE) && DW1000TIME_H_PRINTABLE == 1
 	// print to serial for debug
 	DEPRECATED_MSG("use Serial.print(object)")
 	void print();

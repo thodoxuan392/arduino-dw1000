@@ -31,8 +31,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <Arduino.h>
-#include <SPI.h>
+#include <port.h>
 #include "DW1000Constants.h"
 #include "DW1000Time.h"
 
@@ -244,9 +243,9 @@ public:
 	static DW1000Time   setDelay(const DW1000Time& delay);
 	static void         receivePermanently(boolean val);
 	static void         setData(byte data[], uint16_t n);
-	static void         setData(const String& data);
+	static void         setData(const std::string& data);
 	static void         getData(byte data[], uint16_t n);
-	static void         getData(String& data);
+	static void         getData(std::string& data);
 	static uint16_t     getDataLength();
 	static void         getTransmitTimestamp(DW1000Time& time);
 	static void         getReceiveTimestamp(DW1000Time& time);
@@ -418,9 +417,12 @@ public:
 
 //private:
 	/* chip select, reset and interrupt pins. */
-	static uint8_t _ss;
-	static uint8_t _rst;
-	static uint8_t _irq;
+	static GPIO_Handle _ss;
+	static GPIO_Handle _rst;
+	static GPIO_Handle _irq;
+
+	static uint8_t spiTxBuf[SPI_TX_MAX_LEN];
+	static uint8_t spiRxBuf[SPI_RX_MAX_LEN];
 	
 	/* callbacks. */
 	static void (* _handleError)(void);
@@ -554,11 +556,6 @@ public:
 	static const byte AUTO_CLOCK = 0x00;
 	static const byte XTI_CLOCK  = 0x01;
 	static const byte PLL_CLOCK  = 0x02;
-	
-	/* SPI configs. */
-	static const SPISettings _fastSPI;
-	static const SPISettings _slowSPI;
-	static const SPISettings* _currentSPI;
 	
 	/* range bias tables (500/900 MHz band, 16/64 MHz PRF), -61 to -95 dBm. */
 	static const byte BIAS_500_16_ZERO = 10;
