@@ -1,11 +1,14 @@
 #ifndef DW1000_PORT_H
 #define DW1000_PORT_H
 
-#include <cstdint>
-#include <cstdbool>
-#include <cstring>
-#include <string>
-#include <cmath>
+#ifdef __cplusplus
+extern "C" {
+#endif 
+
+#include <stdint.h>
+#include <stdbool.h>
+#include <string.h>
+#include <math.h>
 
 #include <hal/clock.h>
 #include <hal/gpio.h>
@@ -47,5 +50,9 @@ static inline uint32_t bitClear(byte &value, uint8_t pos){
 static inline uint32_t bitRead(byte value, uint8_t pos){
     return (value & (1<< pos)) != 0;
 }
+
+#ifdef __cplusplus
+} /* end of "extern C" block */
+#endif
 
 #endif  // DW1000_PORT_H

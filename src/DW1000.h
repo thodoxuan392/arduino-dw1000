@@ -28,10 +28,20 @@
 #ifndef _DW1000_H_INCLUDED
 #define _DW1000_H_INCLUDED
 
+#ifdef __cplusplus
+extern "C" {
+#endif 
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <port.h>
+
+#ifdef __cplusplus
+}
+#endif 
+
+#include <string>
 #include "DW1000Constants.h"
 #include "DW1000Time.h"
 
