@@ -40,7 +40,7 @@ GPIO_Handle DW1000Class::_rst = {
 	.pinMask = BIT14,
 	.pin = 14,
 	.mode = GPIO_MODE_OUTPUT,
-	.pushPull = GPIO_PUSEL_PULL_UP,
+	.pushPull = GPIO_PUSEL_DISABLE,
 	.debouncingTime = 0,
 	.interruptMode = 0,
 };
@@ -49,7 +49,7 @@ GPIO_Handle DW1000Class::_irq = {
 	.pinMask = BIT5,
 	.pin = 5,
 	.mode = GPIO_MODE_INPUT,
-	.pushPull = GPIO_PUSEL_PULL_UP,
+	.pushPull = GPIO_PUSEL_PULL_DOWN,
 	.debouncingTime = 0,
 	.interruptMode = GPIO_INT_RISING,
 	.callback = DW1000Class::handleInterrupt
@@ -310,7 +310,7 @@ void DW1000Class::reset() {
 #ifdef DW1000_HW_RESET
 	// dw1000 data sheet v2.08 §5.6.1 page 20, the RSTn pin should not be driven high but left floating.
 	GPIO_write(&_rst, LOW);
-	delay(2);  // dw1000 data sheet v2.08 §5.6.1 page 20: nominal 50ns, to be safe take more time
+	delay(20);  // dw1000 data sheet v2.08 §5.6.1 page 20: nominal 50ns, to be safe take more time
 	GPIO_write(&_rst, HIGH);
 	delay(10); // dwm1000 data sheet v1.2 page 5: nominal 3 ms, to be safe take more time
 	// force into idle mode (although it should be already after reset)
@@ -1757,7 +1757,7 @@ void DW1000Class::writeBytes(byte cmd, uint16_t offset, byte data[], uint16_t da
 	GPIO_write(&_ss, LOW);
 	memcpy(spiTxBuf, header, headerLen);
 	memcpy(&spiTxBuf[headerLen], data, data_size);
-	SPI_transmit(DW_1000_SPI_ID, spiTxBuf, headerLen + data_size, SPI_TRANSFER_TIME_MS);
+	SPI_transmitAndReceive(DW_1000_SPI_ID, spiTxBuf, spiRxBuf, headerLen + data_size, SPI_TRANSFER_TIME_MS);
 	delayMicroseconds(5);
 	GPIO_write(&_ss, HIGH);
 }
