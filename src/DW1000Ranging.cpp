@@ -66,6 +66,10 @@ int16_t            DW1000RangingClass::counterForBlink = 0; // TODO 8 bit?
 
 // data buffer
 byte          DW1000RangingClass::data[LEN_DATA];
+byte          DW1000RangingClass::userDataBuiltinRange[USER_DATA_MAX_SIZE];
+byte          DW1000RangingClass::userDataBuiltinRangeSize = 0;
+
+
 // reset line to the chip
 uint8_t   DW1000RangingClass::_RST;
 uint8_t   DW1000RangingClass::_SS;
@@ -80,7 +84,7 @@ uint16_t  DW1000RangingClass::_timerDelay;
 uint16_t  DW1000RangingClass::_successRangingCount = 0;
 uint32_t  DW1000RangingClass::_rangingCountPeriod  = 0;
 //Here our handlers
-void (* DW1000RangingClass::_handleNewRange)(void) = 0;
+void (* DW1000RangingClass::_handleNewRange)(uint8_t *data, uint32_t dataLen) = 0;
 void (* DW1000RangingClass::_handleBlinkDevice)(DW1000Device*) = 0;
 void (* DW1000RangingClass::_handleNewDevice)(DW1000Device*) = 0;
 void (* DW1000RangingClass::_handleInactiveDevice)(DW1000Device*) = 0;
@@ -317,6 +321,11 @@ DW1000Device* DW1000RangingClass::searchDistantDevice(byte shortAddress[]) {
 	}
 	
 	return nullptr;
+}
+
+void DW1000RangingClass::attachUserDataToRange(uint8_t * data, uint32_t dataSize) {
+	memcpy(userDataBuiltinRange, data, dataSize);
+	userDataBuiltinRangeSize = dataSize;
 }
 
 DW1000Device* DW1000RangingClass::getDistantDevice() {
@@ -607,7 +616,7 @@ void DW1000RangingClass::loop() {
 								//we have finished our range computation. We send the corresponding handler
 								_lastDistantDevice = myDistantDevice->getIndex();
 								if(_handleNewRange != 0) {
-									(*_handleNewRange)();
+									(*_handleNewRange)(&data[USER_DATA_INDEX], USER_DATA_MAX_SIZE);
 								}
 								
 							}
@@ -668,7 +677,7 @@ void DW1000RangingClass::loop() {
 					//we have finished our range computation. We send the corresponding handler
 					_lastDistantDevice = myDistantDevice->getIndex();
 					if(_handleNewRange != 0) {
-						(*_handleNewRange)();
+						(*_handleNewRange)(&data[USER_DATA_INDEX], USER_DATA_MAX_SIZE);
 					}
 				}
 				else if(messageType == RANGE_FAILED) {
@@ -880,7 +889,7 @@ void DW1000RangingClass::transmitRange(DW1000Device* myDistantDevice) {
 			_networkDevices[i].timeRangeSent.getTimestamp(data+SHORT_MAC_LEN+14+17*i);
 			
 		}
-		
+
 		copyShortAddress(_lastSentToShortAddress, shortBroadcast);
 		
 	}
@@ -896,7 +905,8 @@ void DW1000RangingClass::transmitRange(DW1000Device* myDistantDevice) {
 		myDistantDevice->timeRangeSent.getTimestamp(data+11+SHORT_MAC_LEN);
 		copyShortAddress(_lastSentToShortAddress, myDistantDevice->getByteShortAddress());
 	}
-	
+	// Add User data
+	memcpy(&data[USER_DATA_INDEX], userDataBuiltinRange, USER_DATA_MAX_SIZE);
 	
 	transmit(data);
 }
@@ -913,6 +923,10 @@ void DW1000RangingClass::transmitRangeReport(DW1000Device* myDistantDevice) {
 	memcpy(data+1+SHORT_MAC_LEN, &curRange, 4);
 	memcpy(data+5+SHORT_MAC_LEN, &curRXPower, 4);
 	copyShortAddress(_lastSentToShortAddress, myDistantDevice->getByteShortAddress());
+
+	// Add User data
+	memcpy(&data[USER_DATA_INDEX], userDataBuiltinRange, USER_DATA_MAX_SIZE);
+	
 	transmit(data, DW1000Time(_replyDelayTimeUS, DW1000Time::MICROSECONDS));
 }
 

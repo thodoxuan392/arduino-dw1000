@@ -43,7 +43,7 @@
 #define BLINK 4
 #define RANGING_INIT 5
 
-#define LEN_DATA 90
+#define LEN_DATA 122
 
 //Max devices we put in the networkDevices array ! Each DW1000Device is 74 Bytes in SRAM memory for now.
 #define MAX_DEVICES 4
@@ -70,12 +70,17 @@
 #define DEBUG false
 #endif
 
+#define USER_DATA_INDEX 	90
+#define USER_DATA_MAX_SIZE 	32
+
 
 class DW1000RangingClass {
 public:
 	//variables
 	// data buffer
 	static byte data[LEN_DATA];
+	static byte userDataBuiltinRange[USER_DATA_MAX_SIZE];
+	static byte userDataBuiltinRangeSize;
 	
 	//initialisation
 	static void    initCommunication(uint8_t myRST = DEFAULT_RST_PIN, uint8_t mySS = DEFAULT_SPI_SS_PIN, uint8_t myIRQ = 2);
@@ -106,15 +111,15 @@ public:
 	static void setRangeFilterValue(uint16_t newValue);
 	
 	//Handlers:
-	static void attachNewRange(void (* handleNewRange)(void)) { _handleNewRange = handleNewRange; };
+	static void attachNewRange(void (* handleNewRange)(uint8_t *data, uint32_t dataLen)) { _handleNewRange = handleNewRange; };
 	
 	static void attachBlinkDevice(void (* handleBlinkDevice)(DW1000Device*)) { _handleBlinkDevice = handleBlinkDevice; };
 	
 	static void attachNewDevice(void (* handleNewDevice)(DW1000Device*)) { _handleNewDevice = handleNewDevice; };
 	
 	static void attachInactiveDevice(void (* handleInactiveDevice)(DW1000Device*)) { _handleInactiveDevice = handleInactiveDevice; };
-	
-	
+		
+	static void attachUserDataToRange(uint8_t * data, uint32_t dataSize);
 	
 	static DW1000Device* getDistantDevice();
 	static DW1000Device* searchDistantDevice(byte shortAddress[]);
@@ -136,7 +141,7 @@ private:
 	static int16_t      counterForBlink;
 	
 	//Handlers:
-	static void (* _handleNewRange)(void);
+	static void (* _handleNewRange)(uint8_t *data, uint32_t dataLen);
 	static void (* _handleBlinkDevice)(DW1000Device*);
 	static void (* _handleNewDevice)(DW1000Device*);
 	static void (* _handleInactiveDevice)(DW1000Device*);
