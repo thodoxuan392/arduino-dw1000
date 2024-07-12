@@ -20,8 +20,14 @@
 
 #include "DW1000.h"
 
+
+#if defined(NUVOTON)
+	#include <NuMicro.h>
+#endif
+
 DW1000Class DW1000;
 
+#if defined(NUVOTON)
 /* ###########################################################################
  * #### Static member variables ##############################################
  * ######################################################################### */
@@ -54,6 +60,40 @@ GPIO_Handle DW1000Class::_irq = {
 	.interruptMode = GPIO_INT_RISING,
 	.callback = DW1000Class::handleInterrupt
 };
+#elif defined(NRF)
+/* ###########################################################################
+ * #### Static member variables ##############################################
+ * ######################################################################### */
+// pins
+GPIO_Handle DW1000Class::_ss = {
+	// .instance = PC,
+	// .pinMask = BIT0,
+	// .pin = 0,
+	// .mode = GPIO_MODE_OUTPUT,
+	// .pushPull = GPIO_PUSEL_PULL_UP,
+	// .debouncingTime = 0,
+	// .interruptMode = 0,
+};
+GPIO_Handle DW1000Class::_rst = {
+	// .instance = PC,
+	// .pinMask = BIT14,
+	// .pin = 14,
+	// .mode = GPIO_MODE_OUTPUT,
+	// .pushPull = GPIO_PUSEL_DISABLE,
+	// .debouncingTime = 0,
+	// .interruptMode = 0,
+};
+GPIO_Handle DW1000Class::_irq = {
+	// .instance = PC,
+	// .pinMask = BIT5,
+	// .pin = 5,
+	// .mode = GPIO_MODE_INPUT,
+	// .pushPull = GPIO_PUSEL_PULL_DOWN,
+	// .debouncingTime = 0,
+	// .interruptMode = GPIO_INT_RISING,
+	// .callback = DW1000Class::handleInterrupt
+};
+#endif 
 
 uint8_t DW1000Class::spiTxBuf[SPI_TX_MAX_LEN];
 uint8_t DW1000Class::spiRxBuf[SPI_RX_MAX_LEN];
