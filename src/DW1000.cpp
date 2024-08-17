@@ -169,6 +169,7 @@ void DW1000Class::end()
 
 void DW1000Class::select(uint8_t ss)
 {
+	_deviceMode = IDLE_MODE;
 	reselect(ss);
 	// try locking clock at PLL speed (should be done already,
 	// but just to be sure)
@@ -221,7 +222,6 @@ void DW1000Class::begin(uint8_t irq, uint8_t rst)
 	// generous initial init/wake-up-idle delay
 	delay(5);
 	// pin and basic member setup
-	_deviceMode = IDLE_MODE;
 	// attach interrupt
 	// attachInterrupt(_irq, DW1000Class::handleInterrupt, CHANGE); // todo interrupt for ESP8266
 	// TODO throw error if pin is not a interrupt pin

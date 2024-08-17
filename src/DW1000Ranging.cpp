@@ -105,7 +105,10 @@ void DW1000RangingClass::initCommunication(uint8_t myRST, uint8_t mySS, uint8_t 
 	
 	
 	DW1000.begin(myIRQ, myRST);
-	DW1000.select(mySS);
+}
+
+void DW1000RangingClass::select(void){
+	DW1000.select(_SS);
 }
 
 
